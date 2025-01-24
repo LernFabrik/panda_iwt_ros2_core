@@ -73,7 +73,7 @@ int main(int argc, char** argv)
   // :moveit_codedir:`RobotModel<moveit_core/robot_model/include/moveit/robot_model/robot_model.hpp>`
   // for us to use.
 
-  node->declare_parameter("~planning_plugin", "ompl_interface/OMPLPlanner");
+//   node->declare_parameter("~planning_plugin", "ompl_interface/OMPLPlanner");
 
   robot_model_loader::RobotModelLoaderPtr robot_model_loader(
       new robot_model_loader::RobotModelLoader(node, "robot_description"));

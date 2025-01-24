@@ -38,6 +38,7 @@
 #include <moveit/planning_scene_interface/planning_scene_interface.h>
 
 #include <moveit_msgs/msg/display_robot_state.h>
+#include <moveit/robot_state/conversions.h>
 #include <moveit_msgs/msg/display_trajectory.h>
 
 #include <moveit_msgs/msg/attached_collision_object.h>
@@ -127,176 +128,284 @@ int main(int argc, char** argv)
 
   // .. _move_group_interface-planning-to-pose-goal:
   //
-  // Planning to a Pose goal
-  // ^^^^^^^^^^^^^^^^^^^^^^^
-  // We can plan a motion for this group to a desired pose for the
-  // end-effector.
-  geometry_msgs::msg::Pose target_pose1;
-  target_pose1.orientation.x = 0.925;
-  target_pose1.orientation.y = -0.378;
-  target_pose1.orientation.z = 0.0;
-  target_pose1.orientation.w = 0.0;
-  target_pose1.position.x = 0.306;
-  target_pose1.position.y = 0.0;
-  target_pose1.position.z = 0.59;
-  move_group.setPoseTarget(target_pose1);
+  // // Planning to a Pose goal
+  // // ^^^^^^^^^^^^^^^^^^^^^^^
+  // // We can plan a motion for this group to a desired pose for the
+  // // end-effector.
+  // geometry_msgs::msg::Pose target_pose1;
+  // target_pose1.orientation.x = 0.925;
+  // target_pose1.orientation.y = -0.378;
+  // target_pose1.orientation.z = 0.0;
+  // target_pose1.orientation.w = 0.0;
+  // target_pose1.position.x = 0.306;
+  // target_pose1.position.y = 0.0;
+  // target_pose1.position.z = 0.59;
+  // move_group.setPoseTarget(target_pose1);
 
-  // Now, we call the planner to compute the plan and visualize it.
-  // Note that we are just planning, not asking move_group
-  // to actually move the robot.
+  // // Now, we call the planner to compute the plan and visualize it.
+  // // Note that we are just planning, not asking move_group
+  // // to actually move the robot.
   moveit::planning_interface::MoveGroupInterface::Plan my_plan;
 
   bool success = (move_group.plan(my_plan) == moveit::core::MoveItErrorCode::SUCCESS);
 
-  RCLCPP_INFO(LOGGER, "Visualizing plan 1 (pose goal) %s", success ? "" : "FAILED");
+  // RCLCPP_INFO(LOGGER, "Visualizing plan 1 (pose goal) %s", success ? "" : "FAILED");
 
-  // Visualizing plans
-  // ^^^^^^^^^^^^^^^^^
-  // We can also visualize the plan as a line with markers in RViz.
-  RCLCPP_INFO(LOGGER, "Visualizing plan 1 as trajectory line");
-  visual_tools.publishAxisLabeled(target_pose1, "pose1");
-  visual_tools.publishText(text_pose, "Pose_Goal", rvt::WHITE, rvt::XLARGE);
+  // // Visualizing plans
+  // // ^^^^^^^^^^^^^^^^^
+  // // We can also visualize the plan as a line with markers in RViz.
+  // RCLCPP_INFO(LOGGER, "Visualizing plan 1 as trajectory line");
+  // visual_tools.publishAxisLabeled(target_pose1, "pose1");
+  // visual_tools.publishText(text_pose, "Pose_Goal", rvt::WHITE, rvt::XLARGE);
+  // visual_tools.publishTrajectoryLine(my_plan.trajectory_, joint_model_group);
+  // visual_tools.trigger();
+  // visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to Execute");
+
+  // // Moving to a pose goal
+  // // ^^^^^^^^^^^^^^^^^^^^^
+  // //
+  // // Moving to a pose goal is similar to the step above
+  // // except we now use the ``move()`` function. Note that
+  // // the pose goal we had set earlier is still active
+  // // and so the robot will try to move to that goal. We will
+  // // not use that function in this tutorial since it is
+  // // a blocking function and requires a controller to be active
+  // // and report success on execution of a trajectory.
+
+  // /* Uncomment below line when working with a real robot */
+  // move_group.move();
+
+
+
+  // Planning to a joint-space goal 1
+  // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  //
+  // Let's set a joint space goal and move towards it.  This will replace the
+  // pose target we set above.
+  //
+  // To start, we'll create an pointer that references the current robot's state.
+  // RobotState is the object that contains all the current position/velocity/acceleration data.
+  moveit::core::RobotStatePtr current_state = move_group.getCurrentState(10);
+  //
+  // Next get the current set of joint values for the group.
+  std::vector<double> joint_group_positions_1;
+  current_state->copyJointGroupPositions(joint_model_group, joint_group_positions_1);
+
+  // Now, let's modify one of the joints, plan to the new joint space goal, and visualize the plan.
+  // joint_group_positions[0] = -1.0;  // radians
+  joint_group_positions_1 = { -0.01263, -0.9141, 0.1267, -2.7275, 0.09381, 1.8232, 0.8417};  // radians
+  bool within_bounds = move_group.setJointValueTarget(joint_group_positions_1);
+  if (!within_bounds)
+  {
+    RCLCPP_WARN(LOGGER, "Target joint position(s) were outside of limits, but we will plan and clamp to the limits ");
+  }
+
+  // We lower the allowed maximum velocity and acceleration to 5% of their maximum.
+  // The default values are 10% (0.1).
+  // Set your preferred defaults in the joint_limits.yaml file of your robot's moveit_config
+  // or set explicit factors in your code if you need your robot to move faster.
+  move_group.setMaxVelocityScalingFactor(0.05);
+  move_group.setMaxAccelerationScalingFactor(0.05);
+
+  success = (move_group.plan(my_plan) == moveit::core::MoveItErrorCode::SUCCESS);
+  RCLCPP_INFO(LOGGER, "Visualizing plan 2 (joint space goal) %s", success ? "" : "FAILED");
+
+  // Visualize the plan in RViz:
+  visual_tools.deleteAllMarkers();
+  visual_tools.publishText(text_pose, "Joint_Space_Goal", rvt::WHITE, rvt::XLARGE);
   visual_tools.publishTrajectoryLine(my_plan.trajectory_, joint_model_group);
   visual_tools.trigger();
-  visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to Execute");
-
-  // Moving to a pose goal
-  // ^^^^^^^^^^^^^^^^^^^^^
-  //
-  // Moving to a pose goal is similar to the step above
-  // except we now use the ``move()`` function. Note that
-  // the pose goal we had set earlier is still active
-  // and so the robot will try to move to that goal. We will
-  // not use that function in this tutorial since it is
-  // a blocking function and requires a controller to be active
-  // and report success on execution of a trajectory.
+  visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to continue the demo");
 
   /* Uncomment below line when working with a real robot */
   move_group.move();
 
 
 
-  // Planning to a Pose goal 2
-  // ^^^^^^^^^^^^^^^^^^^^^^^
-  // We can plan a motion for this group to a desired pose for the
-  // end-effector.
-  geometry_msgs::msg::Pose target_pose2;
-  target_pose1.orientation.x = 0.922;
-  target_pose1.orientation.y = -0.388;
-  target_pose1.orientation.z = 0.0;
-  target_pose1.orientation.w = 0.012;
-  target_pose1.position.x = 0.439;
-  target_pose1.position.y = 0.068;
-  target_pose1.position.z = 0.252;
-  move_group.setPoseTarget(target_pose2);
+  // Planning to a joint-space goal 2
+  // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  //
+  // Let's set a joint space goal and move towards it.  This will replace the
+  // pose target we set above.
+  //
+  // To start, we'll create an pointer that references the current robot's state.
+  // RobotState is the object that contains all the current position/velocity/acceleration data.
+  current_state = move_group.getCurrentState(10);
+  //
+  // Next get the current set of joint values for the group.
+  std::vector<double> joint_group_positions_2;
+  current_state->copyJointGroupPositions(joint_model_group, joint_group_positions_2);
 
-  // Now, we call the planner to compute the plan and visualize it.
-  // Note that we are just planning, not asking move_group
-  // to actually move the robot.
-  // moveit::planning_interface::MoveGroupInterface::Plan my_plan;
-
-  success = (move_group.plan(my_plan) == moveit::core::MoveItErrorCode::SUCCESS);
-
-  RCLCPP_INFO(LOGGER, "Visualizing plan 2 (pose goal) %s", success ? "" : "FAILED");
-
-  // Visualizing plans
-  // ^^^^^^^^^^^^^^^^^
-  // We can also visualize the plan as a line with markers in RViz.
-  RCLCPP_INFO(LOGGER, "Visualizing plan 2 as trajectory line");
-  visual_tools.publishAxisLabeled(target_pose2, "pose2");
-  visual_tools.publishText(text_pose, "Pose_Goal", rvt::WHITE, rvt::XLARGE);
-  visual_tools.publishTrajectoryLine(my_plan.trajectory_, joint_model_group);
-  visual_tools.trigger();
-  visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to Execute");
-
-  move_group.move();
-
-
-
-  // Planning to a Pose goal
-  // ^^^^^^^^^^^^^^^^^^^^^^^
-  // We can plan a motion for this group to a desired pose for the
-  // end-effector.
-  geometry_msgs::msg::Pose target_pose3; 
-  target_pose1.orientation.x = 0.924;
-  target_pose1.orientation.y = -0.383;
-  target_pose1.orientation.z = 0.0001;
-  target_pose1.orientation.w = 0.0;
-  target_pose1.position.x = 0.41;
-  target_pose1.position.y = 0.0;
-  target_pose1.position.z = 0.04;
-  move_group.setPoseTarget(target_pose3);
-
-  // Now, we call the planner to compute the plan and visualize it.
-  // Note that we are just planning, not asking move_group
-  // to actually move the robot.
-  // moveit::planning_interface::MoveGroupInterface::Plan my_plan;
-
-  success = (move_group.plan(my_plan) == moveit::core::MoveItErrorCode::SUCCESS);
-
-  RCLCPP_INFO(LOGGER, "Visualizing plan 3 (pose goal) %s", success ? "" : "FAILED");
-
-  // Visualizing plans
-  // ^^^^^^^^^^^^^^^^^
-  // We can also visualize the plan as a line with markers in RViz.
-  RCLCPP_INFO(LOGGER, "Visualizing plan 3 as trajectory line");
-  visual_tools.publishAxisLabeled(target_pose1, "pose3");
-  visual_tools.publishText(text_pose, "Pose_Goal", rvt::WHITE, rvt::XLARGE);
-  visual_tools.publishTrajectoryLine(my_plan.trajectory_, joint_model_group);
-  visual_tools.trigger();
-  visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to Execute");
-
-  move_group.move();
-
-
-
-
-
-
-
-
-
-
-
-
-  // // Planning to a joint-space goal
-  // // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  // //
-  // // Let's set a joint space goal and move towards it.  This will replace the
-  // // pose target we set above.
-  // //
-  // // To start, we'll create an pointer that references the current robot's state.
-  // // RobotState is the object that contains all the current position/velocity/acceleration data.
-  // moveit::core::RobotStatePtr current_state = move_group.getCurrentState(10);
-  // //
-  // // Next get the current set of joint values for the group.
-  // std::vector<double> joint_group_positions;
-  // current_state->copyJointGroupPositions(joint_model_group, joint_group_positions);
-
-  // // Now, let's modify one of the joints, plan to the new joint space goal, and visualize the plan.
+  // Now, let's modify one of the joints, plan to the new joint space goal, and visualize the plan.
   // joint_group_positions[0] = -1.0;  // radians
-  // bool within_bounds = move_group.setJointValueTarget(joint_group_positions);
-  // if (!within_bounds)
+  joint_group_positions_2 = { 0.14285, -0.0048, 0.09725, -2.5274, -0.04708, 2.5333, 1.0925 };  // radians
+  within_bounds = move_group.setJointValueTarget(joint_group_positions_2);
+  if (!within_bounds)
+  {
+    RCLCPP_WARN(LOGGER, "Target joint position(s) were outside of limits, but we will plan and clamp to the limits ");
+  }
+
+  // We lower the allowed maximum velocity and acceleration to 5% of their maximum.
+  // The default values are 10% (0.1).
+  // Set your preferred defaults in the joint_limits.yaml file of your robot's moveit_config
+  // or set explicit factors in your code if you need your robot to move faster.
+  move_group.setMaxVelocityScalingFactor(0.05);
+  move_group.setMaxAccelerationScalingFactor(0.05);
+
+  success = (move_group.plan(my_plan) == moveit::core::MoveItErrorCode::SUCCESS);
+  RCLCPP_INFO(LOGGER, "Visualizing plan 2 (joint space goal) %s", success ? "" : "FAILED");
+
+  // Visualize the plan in RViz:
+  visual_tools.deleteAllMarkers();
+  visual_tools.publishText(text_pose, "Joint_Space_Goal", rvt::WHITE, rvt::XLARGE);
+  visual_tools.publishTrajectoryLine(my_plan.trajectory_, joint_model_group);
+  visual_tools.trigger();
+  visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to continue the demo");
+
+  /* Uncomment below line when working with a real robot */
+  move_group.move();
+
+
+
+
+  // Open the gripper
+  auto gripper_node = rclcpp::Node::make_shared("gripper_control");
+
+  // Create a MoveGroupInterface for the gripper
+  moveit::planning_interface::MoveGroupInterface gripper_group(gripper_node, "hand");
+
+  // Set the maximum velocity and acceleration scaling factors
+  gripper_group.setMaxVelocityScalingFactor(0.1);
+  gripper_group.setMaxAccelerationScalingFactor(0.1);
+
+  // Open the gripper
+  std::vector<double> open_gripper_positions = {0.04, 0.04}; // Adjust these values as needed
+  gripper_group.setJointValueTarget(open_gripper_positions);
+
+  moveit::planning_interface::MoveGroupInterface::Plan open_plan;
+  success = (gripper_group.plan(open_plan) == moveit::core::MoveItErrorCode::SUCCESS);
+  if (success)
+  {
+    RCLCPP_INFO(LOGGER, "Opening gripper");
+    gripper_group.move();
+  }
+  else
+  {
+    RCLCPP_ERROR(LOGGER, "Failed to plan opening gripper");
+  }
+
+  // Sleep to allow the gripper to open
+  rclcpp::sleep_for(std::chrono::seconds(2));
+
+
+
+  // Planning to a joint-space goal 3
+  // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  //
+  // Let's set a joint space goal and move towards it.  This will replace the
+  // pose target we set above.
+  //
+  // To start, we'll create an pointer that references the current robot's state.
+  // RobotState is the object that contains all the current position/velocity/acceleration data.
+  current_state = move_group.getCurrentState(10);
+  //
+  // Next get the current set of joint values for the group.
+  std::vector<double> joint_group_positions_3;
+  current_state->copyJointGroupPositions(joint_model_group, joint_group_positions_3);
+
+  // Now, let's modify one of the joints, plan to the new joint space goal, and visualize the plan.
+  // joint_group_positions[0] = -1.0;  // radians
+  joint_group_positions_3 = { 0.18016, 0.27725, 0.05429, -2.53189, -0.083684, 2.82358, 1.127996 };  // radians
+  within_bounds = move_group.setJointValueTarget(joint_group_positions_3);
+  if (!within_bounds)
+  {
+    RCLCPP_WARN(LOGGER, "Target joint position(s) were outside of limits, but we will plan and clamp to the limits ");
+  }
+
+  // We lower the allowed maximum velocity and acceleration to 5% of their maximum.
+  // The default values are 10% (0.1).
+  // Set your preferred defaults in the joint_limits.yaml file of your robot's moveit_config
+  // or set explicit factors in your code if you need your robot to move faster.
+  move_group.setMaxVelocityScalingFactor(0.05);
+  move_group.setMaxAccelerationScalingFactor(0.05);
+
+  success = (move_group.plan(my_plan) == moveit::core::MoveItErrorCode::SUCCESS);
+  RCLCPP_INFO(LOGGER, "Visualizing plan 2 (joint space goal) %s", success ? "" : "FAILED");
+
+  // Visualize the plan in RViz:
+  visual_tools.deleteAllMarkers();
+  visual_tools.publishText(text_pose, "Joint_Space_Goal", rvt::WHITE, rvt::XLARGE);
+  visual_tools.publishTrajectoryLine(my_plan.trajectory_, joint_model_group);
+  visual_tools.trigger();
+  visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to continue the demo");
+
+  /* Uncomment below line when working with a real robot */
+  move_group.move();
+
+
+
+
+  // Test Gripper ######
+  // ^^^^^^^^^^^^^^^^^^
+  // // Open the gripper
+  // auto gripper_node = rclcpp::Node::make_shared("gripper_control");
+
+  // // Create a MoveGroupInterface for the gripper
+  // moveit::planning_interface::MoveGroupInterface gripper_group(gripper_node, "hand");
+
+  // // Set the maximum velocity and acceleration scaling factors
+  // gripper_group.setMaxVelocityScalingFactor(0.1);
+  // gripper_group.setMaxAccelerationScalingFactor(0.1);
+
+  // // Open the gripper
+  // std::vector<double> open_gripper_positions = {0.04, 0.04}; // Adjust these values as needed
+  // gripper_group.setJointValueTarget(open_gripper_positions);
+
+  // moveit::planning_interface::MoveGroupInterface::Plan open_plan;
+  // success = (gripper_group.plan(open_plan) == moveit::core::MoveItErrorCode::SUCCESS);
+  // if (success)
   // {
-  //   RCLCPP_WARN(LOGGER, "Target joint position(s) were outside of limits, but we will plan and clamp to the limits ");
+  //   RCLCPP_INFO(LOGGER, "Opening gripper");
+  //   gripper_group.move();
+  // }
+  // else
+  // {
+  //   RCLCPP_ERROR(LOGGER, "Failed to plan opening gripper");
   // }
 
-  // // We lower the allowed maximum velocity and acceleration to 5% of their maximum.
-  // // The default values are 10% (0.1).
-  // // Set your preferred defaults in the joint_limits.yaml file of your robot's moveit_config
-  // // or set explicit factors in your code if you need your robot to move faster.
-  // move_group.setMaxVelocityScalingFactor(0.05);
-  // move_group.setMaxAccelerationScalingFactor(0.05);
+  // // Sleep to allow the gripper to open
+  // rclcpp::sleep_for(std::chrono::seconds(2));
 
-  // success = (move_group.plan(my_plan) == moveit::core::MoveItErrorCode::SUCCESS);
-  // RCLCPP_INFO(LOGGER, "Visualizing plan 2 (joint space goal) %s", success ? "" : "FAILED");
 
-  // // Visualize the plan in RViz:
-  // visual_tools.deleteAllMarkers();
-  // visual_tools.publishText(text_pose, "Joint_Space_Goal", rvt::WHITE, rvt::XLARGE);
-  // visual_tools.publishTrajectoryLine(my_plan.trajectory_, joint_model_group);
-  // visual_tools.trigger();
-  // visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to continue the demo");
+
+  // Close the gripper
+  std::vector<double> close_gripper_positions = {0.0, 0.0}; // Adjust these values as needed
+  gripper_group.setJointValueTarget(close_gripper_positions);
+
+  // // Set the effort for the gripper joints
+  // std::map<std::string, double> effort_map;
+  // effort_map["panda_finger_joint1"] = 10.0; // Adjust the effort value as needed
+  // effort_map["panda_finger_joint2"] = 10.0; // Adjust the effort value as needed
+  // gripper_group.setMaxEffort(effort_map);
+
+  moveit::planning_interface::MoveGroupInterface::Plan close_plan;
+  success = (gripper_group.plan(close_plan) == moveit::core::MoveItErrorCode::SUCCESS);
+  if (success)
+  {
+    RCLCPP_INFO(LOGGER, "Closing gripper");
+    gripper_group.move();
+  }
+  else
+  {
+    RCLCPP_ERROR(LOGGER, "Failed to plan closing gripper");
+  }
+
+  // Sleep to allow the gripper to close
+  rclcpp::sleep_for(std::chrono::seconds(2));
+
+
+
+
 
   // // Planning with Path Constraints
   // // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
