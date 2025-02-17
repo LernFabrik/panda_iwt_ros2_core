@@ -15,6 +15,8 @@ find_package(moveit_ros REQUIRED)
 find_package(moveit_ros_robot_interaction REQUIRED)
 find_package(moveit_ros_visualization REQUIRED)
 find_package(franka_moveit_config REQUIRED)
+find_package(franka_msgs REQUIRED)
+find_package(franka_gripper REQUIRED)
 find_package(moveit_visual_tools REQUIRED)
 find_package(moveit_plugins REQUIRED)
 find_package(moveit_planners REQUIRED)
@@ -52,6 +54,8 @@ target_include_directories(${PROJECT_NAME} PUBLIC
   "moveit_ros_robot_interaction"
   "moveit_ros_visualization"
   "franka_moveit_config"
+  "franka_msgs"
+  "franka_gripper"
   "moveit_visual_tools"
   "moveit_plugins"
   "moveit_planners"
@@ -152,6 +156,8 @@ ament_target_dependencies(
   "moveit_ros_robot_interaction"
   "moveit_ros_visualization"
   "franka_moveit_config"
+  "franka_msgs"
+  "franka_gripper"
   "moveit_visual_tools"
   "moveit_plugins"
   "moveit_planners"
@@ -180,6 +186,8 @@ ament_target_dependencies(
   "moveit_ros_robot_interaction"
   "moveit_ros_visualization"
   "franka_moveit_config"
+  "franka_msgs"
+  "franka_gripper"
   "moveit_visual_tools"
   "moveit_plugins"
   "moveit_planners"
@@ -208,6 +216,8 @@ ament_target_dependencies(
   "moveit_ros_robot_interaction"
   "moveit_ros_visualization"
   "franka_moveit_config"
+  "franka_msgs"
+  "franka_gripper"
   "moveit_visual_tools"
   "moveit_plugins"
   "moveit_planners"
@@ -226,7 +236,6 @@ install(
   DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/
   DESTINATION include/${PROJECT_NAME}
 )
-
 
 install(TARGETS 
         panda_main
