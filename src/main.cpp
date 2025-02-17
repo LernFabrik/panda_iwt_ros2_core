@@ -1,5 +1,6 @@
 // #include <iwtros2_launch/gripper_controller.hpp>
 #include <panda_manipulation.hpp>
+#include <arm_utilities.hpp>
 
 // using GripperCommand = control_msgs::action::GripperCommand;
 // using ClientGoalHandle = rclcpp_action::ClientGoalHandle<GripperCommand>;
@@ -25,12 +26,14 @@ int main(int argc, char **argv)
 
     static const rclcpp::Logger LOGGER = rclcpp::get_logger("panda_main_node_logger");
 
-    // group->setPlanningPipelineId("ompl");
-    // group->setPlannerId("PTP");
-    // group->setMaxVelocityScalingFactor(0.1);
-    // group->setMaxAccelerationScalingFactor(0.2);
-    // group->setPoseReferenceFrame("panda_link0");
-    // group->setEndEffector("hand");
+    iwtros2::robot_config conf;
+
+    group->setPlanningPipelineId(conf.PIPELINE_ID);
+    group->setPlannerId(conf.PTP_PLANNER_ID);
+    group->setMaxVelocityScalingFactor(conf.MAX_VEL_SCALING);
+    group->setMaxAccelerationScalingFactor(conf.MAX_ACE_SCALING);
+    group->setPoseReferenceFrame(conf.ARM_REFERENCE_FRAME);
+    group->setEndEffectorLink(conf.ARM_END_EFFECTOR);
     // group->allowReplanning(true);
 
     // Reference frame for this robot
@@ -53,16 +56,17 @@ int main(int argc, char **argv)
     auto plc_contl = std::make_shared<iwtros2::ControlPLC>(node_g);
 
     geometry_msgs::msg::PoseStamped table_pose_0_place = 
-        panda_move->generatePose(-0.141, 0.585, 1.265, M_PI, 0, 3 * M_PI / 4, "panda_link0");
+        // panda_move->generatePose(-0.141, 0.585, 1.265, M_PI, 0, 3 * M_PI / 4, "panda_link0");
+        panda_move->generatePose(-0.134, 0.390, 0.156, -3.141, 0.037, -3.140, "panda_link0");
     geometry_msgs::msg::PoseStamped table_pose_1_place = 
-        panda_move->generatePose(0.0530, 0.585, 1.265, M_PI, 0, 3 * M_PI / 4, "panda_link0");
+        panda_move->generatePose(0.588, -0.127, 0.234, -3.131, -0.036, 0.005, "panda_link0");
     geometry_msgs::msg::PoseStamped table_pose_2_place = 
-        panda_move->generatePose(0.0515, 0.756, 1.265, M_PI, 0, 3 * M_PI / 4, "panda_link0");
+        panda_move->generatePose(0.424, -0.287, 0.226, -3.129, 0.061, -0.018, "panda_link0");
     geometry_msgs::msg::PoseStamped table_pose_3_place = 
-        panda_move->generatePose(-0.1423, 0.760, 1.265, M_PI, 0, 3 * M_PI / 4, "panda_link0");
+        panda_move->generatePose(0.576, -0.302, 0.228, -3.124, -0.028, -0.022, "panda_link0");
 
-    geometry_msgs::msg::PoseStamped table_pose_0_pick = 
-        panda_move->generatePose(-0.141, 0.5850, 1.260, M_PI, 0, 3 * M_PI / 4, "panda_link0");
+    geometry_msgs::msg::PoseStamped table_pose_0_pick = table_pose_0_place;
+        // panda_move->generatePose(-0.141, 0.5850, 1.260, M_PI, 0, 3 * M_PI / 4, "panda_link0");
     geometry_msgs::msg::PoseStamped table_pose_1_pick = 
         panda_move->generatePose(0.0530, 0.5885, 1.2615, M_PI, 0, 3 * M_PI / 4, "panda_link0");
     geometry_msgs::msg::PoseStamped table_pose_2_pick = 
@@ -77,7 +81,7 @@ int main(int argc, char **argv)
     geometry_msgs::msg::PoseStamped conveyor_pose =
         // panda_move->generatePose(0.235, -0.43, 1.263, M_PI, 0, M_PI / 4, "panda_link0"); // default
         // panda_move->generatePose(0.2360, -0.4298, 1.263, M_PI, 0, M_PI / 4, "panda_link0");
-        panda_move->generatePose(0.545, -0.006, 0.290, 3.140, 0.052, -0.042, "panda_link0");
+        panda_move->generatePose(0.177, -0.433, 0.174, -3.125, -0.012, -1.585, "panda_link0");
     geometry_msgs::msg::PoseStamped hochregallager_pose =
         panda_move->generatePose(0.555, 0.069, 1.345, M_PI, 0, 3 * M_PI / 4, "panda_link0"); 
     geometry_msgs::msg::PoseStamped loading_pose =
