@@ -27,12 +27,12 @@ class robot_config
     {
         ARM_GROUP_NAME = "panda_arm";
         ARM_REFERENCE_FRAME = "panda_link0";
-        ARM_END_EFFECTOR = "panda_link8";
+        ARM_END_EFFECTOR = "panda_hand";
         PIPELINE_ID = "pilz";
         PTP_PLANNER_ID = "PTP";
         LIN_PLANNER_ID = "LIN";
         MAX_VEL_SCALING = 0.1;
-        MAX_ACE_SCALING = 1.0;
+        MAX_ACE_SCALING = 0.5;
     }
 };
 
