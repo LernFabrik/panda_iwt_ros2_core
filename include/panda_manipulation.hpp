@@ -28,14 +28,15 @@
 #include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
 #include "tf2_ros/transform_listener.h"
 
-// #include "control_msgs/action/gripper_command.hpp"
-// #include "panda_iwt_ros2_core/gripper_controller.hpp"
+#include "control_msgs/action/gripper_command.hpp"
+#include <franka_msgs/action/grasp.hpp>
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp_action/rclcpp_action.hpp"
 
 #include "panda_iwt_ros2_interfaces/msg/panda_control.hpp"
 #include "panda_iwt_ros2_interfaces/msg/plc_control.hpp"
 #include "create_motion_planning.hpp"
+#include "arm_utilities.hpp"
 
 namespace rvt = rviz_visual_tools;
 
@@ -105,11 +106,19 @@ class PandaMove
     void visualMarkers(const geometry_msgs::msg::PoseStamped target_pose,
                        const moveit::planning_interface::MoveGroupInterface::Plan plan, const std::string task);
 
+    using GripperCommand = control_msgs::action::GripperCommand;
+    using GripperGoalHandle = rclcpp_action::ClientGoalHandle<GripperCommand>;
+    void open_gripper();
+    void close_gripper();
+    robot_config conf;
+
+
   private:
     rclcpp::Node::SharedPtr _node;
     std::shared_ptr<moveit::planning_interface::MoveGroupInterface> _group;
 
-    // std::shared_ptr<GripperController> _gripper_client;
+    rclcpp_action::Client<GripperCommand>::SharedPtr _gripper_client_ptr_;
+
 
     std::shared_ptr<CreateMotion> _motion;
 

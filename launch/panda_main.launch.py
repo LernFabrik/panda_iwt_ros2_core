@@ -167,6 +167,18 @@ def generate_launch_description():
         ],
     )
 
+    # gripper_node = Node(
+    #     # name="panda_main_node",
+    #     package="panda_iwt_ros2_core",
+    #     executable="gripper_controller",
+    #     output="screen",
+    #     parameters=[
+    #         robot_description,
+    #         robot_description_semantic,
+    #         kinematics_yaml,
+    #     ],
+    # )
+
     return LaunchDescription(
         [
         robot_arg,

@@ -15,6 +15,7 @@
 #include <moveit_msgs/msg/planning_scene.hpp>
 #include <moveit_visual_tools/moveit_visual_tools.h>
 
+
 using namespace std::placeholders;
 
 namespace iwtros2
@@ -50,6 +51,8 @@ PandaMove::PandaMove(const rclcpp::Node::SharedPtr &node,
 
     // Initialize Gripper
     // this->_gripper_client = std::make_shared<GripperController>(_node);
+    this->_gripper_client_ptr_ = rclcpp_action::create_client<GripperCommand>(_node,"/panda_gripper/gripper_action"); 
+
 
     // Create motion planning
     this->_motion = std::make_shared<CreateMotion>(_node, _group);
@@ -169,70 +172,70 @@ void PandaMove::motionExecution(geometry_msgs::msg::PoseStamped pose, const std:
 void PandaMove::pnpPipeLine(geometry_msgs::msg::PoseStamped pick, geometry_msgs::msg::PoseStamped place,
                            const double offset, const bool tmp_pose, const bool tmp_pose_2, const bool reverse)
 {
-    if (reverse)
-    {
-        if (tmp_pose_2)
-            go_to_joint_angles();
-    }
+    // if (reverse)
+    // {
+    //     if (tmp_pose_2)
+    //         go_to_joint_angles();
+    // }
 
+    // Pick
     RCLCPP_INFO(_node->get_logger(), "Panda Pre-Pick Pose");
     pick.pose.position.z += offset;
     motionExecution(pick, "Pre-Pick Pose", false);
 
-    // RCLCPP_INFO(_node->get_logger(), "Panda Pre-Pick Pose Gripper OPEN");
-    // auto pio_future = _gripper_client->open();
-    // _gripper_client->dead_lock_future(pio_future);
-    // rclcpp::sleep_for(std::chrono::seconds(2));
+    RCLCPP_INFO(_node->get_logger(), "Panda Pre-Pick Pose Gripper OPEN");
+    this->open_gripper();
+    rclcpp::sleep_for(std::chrono::seconds(2));
+    
 
     RCLCPP_INFO(_node->get_logger(), "Panda Pick Pose");
     pick.pose.position.z -= offset;
     motionExecution(pick, "Pick Pose", true);
 
-    // RCLCPP_INFO(_node->get_logger(), "Panda Pick Pose Gripper CLOSE");
-    // auto pic_future = _gripper_client->close();
-    // _gripper_client->dead_lock_future(pic_future);
-    // rclcpp::sleep_for(std::chrono::seconds(2));
+    RCLCPP_INFO(_node->get_logger(), "Panda Pick Pose Gripper CLOSE");
+    this->close_gripper();
+    rclcpp::sleep_for(std::chrono::seconds(2));
 
     RCLCPP_INFO(_node->get_logger(), "Panda Post Pick Pose");
     pick.pose.position.z += offset;
+    std::cout << "PostPick Pose: " << pick.pose.position.z << std::endl;
     motionExecution(pick, "Post Pick Pose", true);
 
-    if (!reverse)
-    {
-        if (tmp_pose)
-            go_home(true);
-        else
-            go_home(false);
-        if (tmp_pose_2)
-            go_to_joint_angles();
-    }
-    else 
-    {
-        if (tmp_pose_2)
-            go_to_joint_angles();
-        if (tmp_pose)
-            go_home(true);
-        else
-            go_home(false);
-    }
+    // if (!reverse)
+    // {
+    //     if (tmp_pose)
+    //         go_home(true);
+    //     else
+    //         go_home(false);
+    //     if (tmp_pose_2)
+    //         go_to_joint_angles();
+    // }
+    // else 
+    // {
+    //     if (tmp_pose_2)
+    //         go_to_joint_angles();
+    //     if (tmp_pose)
+    //         go_home(true);
+    //     else
+    //         go_home(false);
+    // }
 
     // Place
-    // RCLCPP_INFO(_node->get_logger(), "Panda Pre Place Pose");
-    // place.pose.position.z += offset;
-    // motionExecution(place, "Pre Place Pose", false);
+    RCLCPP_INFO(_node->get_logger(), "Panda Pre Place Pose");
+    place.pose.position.z += offset;
+    motionExecution(place, "Pre Place Pose", false);
 
-    // RCLCPP_INFO(_node->get_logger(), "Panda Place Pose");
-    // place.pose.position.z -= offset;
-    // motionExecution(place, "Place Pose", true);
+    RCLCPP_INFO(_node->get_logger(), "Panda Place Pose");
+    place.pose.position.z -= offset;
+    motionExecution(place, "Place Pose", true);
 
-    // // RCLCPP_INFO(_node->get_logger(), "Panda Place Pose Gripper OPEN");
-    // // auto plac_future = _gripper_client->open();
-    // // _gripper_client->dead_lock_future(plac_future);
-    // // rclcpp::sleep_for(std::chrono::seconds(2));
+    RCLCPP_INFO(_node->get_logger(), "Panda Place Pose Gripper OPEN");
+    this->open_gripper();
+    rclcpp::sleep_for(std::chrono::seconds(2));
 
-    // RCLCPP_INFO(_node->get_logger(), "Panda Post Place Pose");
-    // place.pose.position.z += offset;
-    // motionExecution(place, "Post Place Pose", true);
+    RCLCPP_INFO(_node->get_logger(), "Panda Post Place Pose");
+    place.pose.position.z += offset;
+    motionExecution(place, "Post Place Pose", true);
 }
 
 void PandaMove::pick_action(geometry_msgs::msg::PoseStamped pick, const double offset)
@@ -280,6 +283,49 @@ void PandaMove::place_action(geometry_msgs::msg::PoseStamped place, const double
     place.pose.position.z += offset;
     motionExecution(place, "Post Place Pose", true);
 }
+
+  void PandaMove::open_gripper()
+  {
+    using namespace std::placeholders;
+
+    // this->timer_->cancel();
+
+    if (!this->_gripper_client_ptr_->wait_for_action_server()) {
+      RCLCPP_ERROR(_node->get_logger(), "Action server not available after waiting");
+      rclcpp::shutdown();
+    }
+
+    auto goal_msg = GripperCommand::Goal();
+    goal_msg.command.position = 0.04;
+    goal_msg.command.max_effort = 10;
+
+    RCLCPP_INFO(_node->get_logger(), "Sending gripper goal - Opening gripper");
+
+    auto send_goal_options = rclcpp_action::Client<GripperCommand>::SendGoalOptions();
+    this->_gripper_client_ptr_->async_send_goal(goal_msg, send_goal_options);
+  }
+
+  void PandaMove::close_gripper()
+  {
+    using namespace std::placeholders;
+
+    // this->timer_->cancel();
+
+    if (!this->_gripper_client_ptr_->wait_for_action_server()) {
+      RCLCPP_ERROR(_node->get_logger(), "Action server not available after waiting");
+      rclcpp::shutdown();
+    }
+
+    auto goal_msg = GripperCommand::Goal();
+    goal_msg.command.position = 0.0;
+    goal_msg.command.max_effort = 10;
+
+    RCLCPP_INFO(_node->get_logger(), "Sending gripper goal - Closing gripper");
+
+    auto send_goal_options = rclcpp_action::Client<GripperCommand>::SendGoalOptions();
+    this->_gripper_client_ptr_->async_send_goal(goal_msg, send_goal_options);
+  }
+
 } // namespace iwtros2
 
 // RCLCPP_COMPONENTS_REGISTER_NODE(iwtros2::PandaMove)
