@@ -32,7 +32,7 @@ class robot_config
         PTP_PLANNER_ID = "PTP";
         LIN_PLANNER_ID = "LIN";
         MAX_VEL_SCALING = 0.1;
-        MAX_ACE_SCALING = 0.5;
+        MAX_ACE_SCALING = 0.3;
     }
 };
 

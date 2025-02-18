@@ -57,22 +57,22 @@ int main(int argc, char **argv)
 
     geometry_msgs::msg::PoseStamped table_pose_0_place = 
         // panda_move->generatePose(-0.141, 0.585, 1.265, M_PI, 0, 3 * M_PI / 4, "panda_link0");
-        panda_move->generatePose(-0.134, 0.390, 0.156, -3.141, 0.037, -3.140, "panda_link0");
+        panda_move->generatePose(-0.130, 0.390, 0.155, -3.135, 0.002, -3.140, "panda_link0");
     geometry_msgs::msg::PoseStamped table_pose_1_place = 
-        panda_move->generatePose(0.588, -0.127, 0.234, -3.131, -0.036, 0.005, "panda_link0");
+        panda_move->generatePose(0.047, 0.387, 0.157, -3.133, 0.038, -3.139, "panda_link0");
     geometry_msgs::msg::PoseStamped table_pose_2_place = 
-        panda_move->generatePose(0.424, -0.287, 0.226, -3.129, 0.061, -0.018, "panda_link0");
+        panda_move->generatePose(0.053, 0.590, 0.156, -3.138, 0.021, 3.137, "panda_link0");
     geometry_msgs::msg::PoseStamped table_pose_3_place = 
-        panda_move->generatePose(0.576, -0.302, 0.228, -3.124, -0.028, -0.022, "panda_link0");
+        panda_move->generatePose(-0.131, 0.592, 0.154, 3.138, 0.036, 3.141, "panda_link0");
 
     geometry_msgs::msg::PoseStamped table_pose_0_pick = table_pose_0_place;
         // panda_move->generatePose(-0.141, 0.5850, 1.260, M_PI, 0, 3 * M_PI / 4, "panda_link0");
-    geometry_msgs::msg::PoseStamped table_pose_1_pick = 
-        panda_move->generatePose(0.0530, 0.5885, 1.2615, M_PI, 0, 3 * M_PI / 4, "panda_link0");
-    geometry_msgs::msg::PoseStamped table_pose_2_pick = 
-        panda_move->generatePose(0.0500, 0.7590, 1.266, M_PI, 0, 3 * M_PI / 4, "panda_link0");
-    geometry_msgs::msg::PoseStamped table_pose_3_pick = 
-        panda_move->generatePose(-0.1423, 0.7590, 1.262, M_PI, 0, 3 * M_PI / 4, "panda_link0");
+    geometry_msgs::msg::PoseStamped table_pose_1_pick = table_pose_1_place;
+        // panda_move->generatePose(0.0530, 0.5885, 1.2615, M_PI, 0, 3 * M_PI / 4, "panda_link0");
+    geometry_msgs::msg::PoseStamped table_pose_2_pick = table_pose_2_place;
+        // panda_move->generatePose(0.0500, 0.7590, 1.266, M_PI, 0, 3 * M_PI / 4, "panda_link0");
+    geometry_msgs::msg::PoseStamped table_pose_3_pick = table_pose_3_place;
+        // panda_move->generatePose(-0.1423, 0.7590, 1.262, M_PI, 0, 3 * M_PI / 4, "panda_link0");
         
     geometry_msgs::msg::PoseStamped home_pose =
         // panda_move->generatePose(0.5, 0, 1.65896, -M_PI, 0, M_PI, "panda_link0");
@@ -81,7 +81,7 @@ int main(int argc, char **argv)
     geometry_msgs::msg::PoseStamped conveyor_pose =
         // panda_move->generatePose(0.235, -0.43, 1.263, M_PI, 0, M_PI / 4, "panda_link0"); // default
         // panda_move->generatePose(0.2360, -0.4298, 1.263, M_PI, 0, M_PI / 4, "panda_link0");
-        panda_move->generatePose(0.177, -0.433, 0.174, -3.125, -0.012, -1.585, "panda_link0");
+        panda_move->generatePose(0.174, -0.432, 0.174, 3.139, -0.022, -1.575, "panda_link0");
     geometry_msgs::msg::PoseStamped hochregallager_pose =
         panda_move->generatePose(0.555, 0.069, 1.345, M_PI, 0, 3 * M_PI / 4, "panda_link0"); 
     geometry_msgs::msg::PoseStamped loading_pose =

@@ -95,7 +95,7 @@ void PandaMove::go_home(const bool tmp_pose)
     // current_state->copyJointGroupPositions(joint_model_group, joint_group_position);
     if (tmp_pose)
     {
-        joint_group_position = {1.5708, -0.26, 0.0, -1.74533, 0.0, 1.74533, 0.0};
+        joint_group_position = {0.8858, -0.5503, 0.0642, -2.5330, 0.0108, 1.9932, 0.8437};
     }
     else
     {
@@ -117,7 +117,7 @@ void PandaMove::go_to_joint_angles()
     std::vector<double> joint_group_position;
     // current_state->copyJointGroupPositions(joint_model_group, joint_group_position);
     // joint_group_position = {-1.047, 0.0, 2.268, -1.396, 0.0, 1.5708, 1.920}; // trajectory beside hochregallager
-    joint_group_position = {-0.7853, 0.0, 1.5708, -1.0, 0.0, 1.5708, 1.0};
+    joint_group_position = {1.4409, -0.5723, 0.2455, -2.550, 0.0128, 1.9931, 0.8646};
     moveit::planning_interface::MoveGroupInterface::Plan plan;
     _motion->joint_space_goal(joint_group_position, plan);
     _group->execute(plan);
@@ -172,11 +172,11 @@ void PandaMove::motionExecution(geometry_msgs::msg::PoseStamped pose, const std:
 void PandaMove::pnpPipeLine(geometry_msgs::msg::PoseStamped pick, geometry_msgs::msg::PoseStamped place,
                            const double offset, const bool tmp_pose, const bool tmp_pose_2, const bool reverse)
 {
-    // if (reverse)
-    // {
-    //     if (tmp_pose_2)
-    //         go_to_joint_angles();
-    // }
+    if (reverse)
+    {
+        if (tmp_pose_2)
+            go_to_joint_angles();
+    }
 
     // Pick
     RCLCPP_INFO(_node->get_logger(), "Panda Pre-Pick Pose");
@@ -201,24 +201,24 @@ void PandaMove::pnpPipeLine(geometry_msgs::msg::PoseStamped pick, geometry_msgs:
     std::cout << "PostPick Pose: " << pick.pose.position.z << std::endl;
     motionExecution(pick, "Post Pick Pose", true);
 
-    // if (!reverse)
-    // {
-    //     if (tmp_pose)
-    //         go_home(true);
-    //     else
-    //         go_home(false);
-    //     if (tmp_pose_2)
-    //         go_to_joint_angles();
-    // }
-    // else 
-    // {
-    //     if (tmp_pose_2)
-    //         go_to_joint_angles();
-    //     if (tmp_pose)
-    //         go_home(true);
-    //     else
-    //         go_home(false);
-    // }
+    if (!reverse)
+    {
+        if (tmp_pose)
+            go_home(true);
+        else
+            go_home(false);
+        if (tmp_pose_2)
+            go_to_joint_angles();
+    }
+    else 
+    {
+        if (tmp_pose_2)
+            go_to_joint_angles();
+        if (tmp_pose)
+            go_home(true);
+        else
+            go_home(false);
+    }
 
     // Place
     RCLCPP_INFO(_node->get_logger(), "Panda Pre Place Pose");
