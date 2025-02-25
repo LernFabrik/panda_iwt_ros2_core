@@ -36,7 +36,6 @@ PandaMove::PandaMove(const rclcpp::Node::SharedPtr &node,
 
     // Display basic information
     RCLCPP_INFO(_node->get_logger(), "Planning frame: %s", _group->getPlanningFrame().c_str());
-    // RCLCPP_INFO(_node->get_logger(), "End effector link: %s", _group->getEndEffector().c_str());
     RCLCPP_INFO(_node->get_logger(), "End effector link: %s", _group->getEndEffectorLink().c_str());
 
     this->_visual_tools = std::make_shared<moveit_visual_tools::MoveItVisualTools>(
@@ -50,19 +49,15 @@ PandaMove::PandaMove(const rclcpp::Node::SharedPtr &node,
     _visual_tools->trigger();
 
     // Initialize Gripper
-    // this->_gripper_client = std::make_shared<GripperController>(_node);
-    this->_gripper_client_ptr_ = rclcpp_action::create_client<GripperCommand>(_node,"/panda_gripper/gripper_action"); 
+    this->_gripper_motion_client_ptr_ = rclcpp_action::create_client<GripperCommandAction>(_node,"/panda_gripper/gripper_action"); 
 
+    // Gripper homing
+    this->_gripper_homing_client_ptr_ = rclcpp_action::create_client<GripperHomingAction>(_node,"/panda_gripper/homing");
+    // this->home_gripper();
 
     // Create motion planning
     this->_motion = std::make_shared<CreateMotion>(_node, _group);
 }
-
-// void PandaMove::gripper_status_callback(const std_msgs::msg::Bool::SharedPtr result)
-// {
-//     RCLCPP_INFO(_node->get_logger(), "Gripper Status received");
-//     this->_gripper_succeeded = result->data;
-// }
 
 geometry_msgs::msg::PoseStamped PandaMove::generatePose(const double x, const double y, const double z,
                                                        const double roll, const double pitch, const double yaw,
@@ -84,6 +79,48 @@ geometry_msgs::msg::PoseStamped PandaMove::generatePose(const double x, const do
     pose.pose.orientation.w = q.w();
 
     return pose;
+}
+
+void PandaMove::home_gripper()
+{
+    // using namespace std::placeholders;
+
+    if (!this->_gripper_homing_client_ptr_->wait_for_action_server()) {
+      RCLCPP_ERROR(_node->get_logger(), "Action server for gripper homing not available after waiting");
+      rclcpp::shutdown();
+    }
+
+    this->_gripper_succeeded = false;
+    auto goal_msg = GripperHomingAction::Goal();
+
+    RCLCPP_INFO(_node->get_logger(), "Sending gripper goal - Homing gripper");
+
+    auto send_goal_options = rclcpp_action::Client<GripperHomingAction>::SendGoalOptions();
+    // send_goal_options.result_callback = std::bind(&PandaMove::gripper_status_callback, this, _1);
+    send_goal_options.result_callback =
+        [this](const rclcpp_action::ClientGoalHandle<GripperHomingAction>::WrappedResult &result)
+    {
+        switch (result.code)
+        {
+        case rclcpp_action::ResultCode::SUCCEEDED:
+            RCLCPP_INFO(_node->get_logger(), "Gripper homing succeeded");
+            this->_gripper_succeeded = true;
+            break;
+        case rclcpp_action::ResultCode::ABORTED:
+            RCLCPP_ERROR(_node->get_logger(), "Gripper homing was aborted");
+            break;
+        case rclcpp_action::ResultCode::CANCELED:
+            RCLCPP_ERROR(_node->get_logger(), "Gripper homing was canceled");
+            break;
+        default:
+            RCLCPP_ERROR(_node->get_logger(), "Unknown result code");
+            break;
+        }
+        if (this->_gripper_succeeded != true){
+            rclcpp::shutdown();
+        }
+    };
+    this->_gripper_homing_client_ptr_->async_send_goal(goal_msg, send_goal_options);
 }
 
 void PandaMove::go_home(const bool tmp_pose)
@@ -116,8 +153,7 @@ void PandaMove::go_to_joint_angles()
     _group->setPlannerId("PTP");
     std::vector<double> joint_group_position;
     // current_state->copyJointGroupPositions(joint_model_group, joint_group_position);
-    // joint_group_position = {-1.047, 0.0, 2.268, -1.396, 0.0, 1.5708, 1.920}; // trajectory beside hochregallager
-    joint_group_position = {1.4409, -0.5723, 0.2455, -2.550, 0.0128, 1.9931, 0.8646};
+    joint_group_position = {1.4409, -0.5723, 0.2455, -2.550, 0.0128, 1.9931, 0.8646}; // trajectory beside hochregallager
     moveit::planning_interface::MoveGroupInterface::Plan plan;
     _motion->joint_space_goal(joint_group_position, plan);
     _group->execute(plan);
@@ -244,18 +280,16 @@ void PandaMove::pick_action(geometry_msgs::msg::PoseStamped pick, const double o
     pick.pose.position.z += offset;
     motionExecution(pick, "Pre-Pick Pose", false);
 
-    // RCLCPP_INFO(_node->get_logger(), "Panda Pre-Pick Pose Gripper OPEN");
-    // auto pio_future = _gripper_client->open();
-    // _gripper_client->dead_lock_future(pio_future);
-    // rclcpp::sleep_for(std::chrono::seconds(2));
+    RCLCPP_INFO(_node->get_logger(), "Panda Pre-Pick Pose Gripper OPEN");
+    this->open_gripper();
+    rclcpp::sleep_for(std::chrono::seconds(2));
 
     RCLCPP_INFO(_node->get_logger(), "Panda Pick Pose");
     pick.pose.position.z -= offset;
     motionExecution(pick, "Pick Pose", true);
 
     RCLCPP_INFO(_node->get_logger(), "Panda Pick Pose Gripper CLOSE");
-    // auto pic_future = _gripper_client->close();
-    // _gripper_client->dead_lock_future(pic_future);
+    this->close_gripper();
     rclcpp::sleep_for(std::chrono::seconds(2));
 
     RCLCPP_INFO(_node->get_logger(), "Panda Post Pick Pose");
@@ -274,10 +308,9 @@ void PandaMove::place_action(geometry_msgs::msg::PoseStamped place, const double
     place.pose.position.z -= offset;
     motionExecution(place, "Place Pose", true);
 
-    // RCLCPP_INFO(_node->get_logger(), "Panda Place Pose Gripper OPEN");
-    // auto plac_future = _gripper_client->open();
-    // _gripper_client->dead_lock_future(plac_future);
-    // rclcpp::sleep_for(std::chrono::seconds(2));
+    RCLCPP_INFO(_node->get_logger(), "Panda Pre-Pick Pose Gripper OPEN");
+    this->open_gripper();
+    rclcpp::sleep_for(std::chrono::seconds(2));
 
     RCLCPP_INFO(_node->get_logger(), "Panda Post Place Pose");
     place.pose.position.z += offset;
@@ -286,44 +319,40 @@ void PandaMove::place_action(geometry_msgs::msg::PoseStamped place, const double
 
   void PandaMove::open_gripper()
   {
-    using namespace std::placeholders;
+    // using namespace std::placeholders;
 
-    // this->timer_->cancel();
-
-    if (!this->_gripper_client_ptr_->wait_for_action_server()) {
-      RCLCPP_ERROR(_node->get_logger(), "Action server not available after waiting");
+    if (!this->_gripper_motion_client_ptr_->wait_for_action_server()) {
+      RCLCPP_ERROR(_node->get_logger(), "Action server for gripper motion not available after waiting");
       rclcpp::shutdown();
     }
 
-    auto goal_msg = GripperCommand::Goal();
+    auto goal_msg = GripperCommandAction::Goal();
     goal_msg.command.position = 0.04;
     goal_msg.command.max_effort = 10;
 
     RCLCPP_INFO(_node->get_logger(), "Sending gripper goal - Opening gripper");
 
-    auto send_goal_options = rclcpp_action::Client<GripperCommand>::SendGoalOptions();
-    this->_gripper_client_ptr_->async_send_goal(goal_msg, send_goal_options);
+    auto send_goal_options = rclcpp_action::Client<GripperCommandAction>::SendGoalOptions();
+    this->_gripper_motion_client_ptr_->async_send_goal(goal_msg, send_goal_options);
   }
 
   void PandaMove::close_gripper()
   {
-    using namespace std::placeholders;
+    // using namespace std::placeholders;
 
-    // this->timer_->cancel();
-
-    if (!this->_gripper_client_ptr_->wait_for_action_server()) {
-      RCLCPP_ERROR(_node->get_logger(), "Action server not available after waiting");
+    if (!this->_gripper_motion_client_ptr_->wait_for_action_server()) {
+      RCLCPP_ERROR(_node->get_logger(), "Action server for gripper motion not available after waiting");
       rclcpp::shutdown();
     }
 
-    auto goal_msg = GripperCommand::Goal();
+    auto goal_msg = GripperCommandAction::Goal();
     goal_msg.command.position = 0.0;
     goal_msg.command.max_effort = 10;
 
     RCLCPP_INFO(_node->get_logger(), "Sending gripper goal - Closing gripper");
 
-    auto send_goal_options = rclcpp_action::Client<GripperCommand>::SendGoalOptions();
-    this->_gripper_client_ptr_->async_send_goal(goal_msg, send_goal_options);
+    auto send_goal_options = rclcpp_action::Client<GripperCommandAction>::SendGoalOptions();
+    this->_gripper_motion_client_ptr_->async_send_goal(goal_msg, send_goal_options);
   }
 
 } // namespace iwtros2

@@ -29,6 +29,7 @@
 #include "tf2_ros/transform_listener.h"
 
 #include "control_msgs/action/gripper_command.hpp"
+#include <franka_msgs/action/homing.hpp>
 #include <franka_msgs/action/grasp.hpp>
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp_action/rclcpp_action.hpp"
@@ -106,10 +107,11 @@ class PandaMove
     void visualMarkers(const geometry_msgs::msg::PoseStamped target_pose,
                        const moveit::planning_interface::MoveGroupInterface::Plan plan, const std::string task);
 
-    using GripperCommand = control_msgs::action::GripperCommand;
-    using GripperGoalHandle = rclcpp_action::ClientGoalHandle<GripperCommand>;
+    using GripperCommandAction = control_msgs::action::GripperCommand;
+    using GripperHomingAction = franka_msgs::action::Homing;
     void open_gripper();
     void close_gripper();
+    void home_gripper();
     robot_config conf;
 
 
@@ -117,15 +119,14 @@ class PandaMove
     rclcpp::Node::SharedPtr _node;
     std::shared_ptr<moveit::planning_interface::MoveGroupInterface> _group;
 
-    rclcpp_action::Client<GripperCommand>::SharedPtr _gripper_client_ptr_;
+    rclcpp_action::Client<GripperCommandAction>::SharedPtr _gripper_motion_client_ptr_;
+    rclcpp_action::Client<GripperHomingAction>::SharedPtr _gripper_homing_client_ptr_;
 
 
     std::shared_ptr<CreateMotion> _motion;
 
     std::shared_ptr<moveit_visual_tools::MoveItVisualTools> _visual_tools;
     Eigen::Isometry3d _text_pose;
-    // double _velocity_scalling, acceleration_scalling;
-    // bool ready_pick_pose;
     bool _gripper_succeeded;
 
     std::string _planner_pipeline, _planner_id, _reference_frame, _ee_frame;
