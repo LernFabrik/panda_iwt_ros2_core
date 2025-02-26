@@ -83,8 +83,6 @@ geometry_msgs::msg::PoseStamped PandaMove::generatePose(const double x, const do
 
 void PandaMove::home_gripper()
 {
-    // using namespace std::placeholders;
-
     if (!this->_gripper_homing_client_ptr_->wait_for_action_server()) {
       RCLCPP_ERROR(_node->get_logger(), "Action server for gripper homing not available after waiting");
       rclcpp::shutdown();
@@ -96,32 +94,39 @@ void PandaMove::home_gripper()
     RCLCPP_INFO(_node->get_logger(), "Sending gripper goal - Homing gripper");
 
     auto send_goal_options = rclcpp_action::Client<GripperHomingAction>::SendGoalOptions();
-    // send_goal_options.result_callback = std::bind(&PandaMove::gripper_status_callback, this, _1);
-    send_goal_options.result_callback =
-        [this](const rclcpp_action::ClientGoalHandle<GripperHomingAction>::WrappedResult &result)
+    auto goal_handle_future = this->_gripper_homing_client_ptr_->async_send_goal(goal_msg, send_goal_options);
+
+    // Wait for the goal to be accepted
+    auto goal_handle = goal_handle_future.get();
+    if (!goal_handle) {
+        RCLCPP_ERROR(_node->get_logger(), "Goal was rejected by the action server");
+        return;
+    }
+
+    // Wait for the result
+    auto result_future = this->_gripper_homing_client_ptr_->async_get_result(goal_handle);
+    auto result = result_future.get();
+
+    switch (result.code)
     {
-        switch (result.code)
-        {
-        case rclcpp_action::ResultCode::SUCCEEDED:
-            RCLCPP_INFO(_node->get_logger(), "Gripper homing succeeded");
-            this->_gripper_succeeded = true;
-            break;
-        case rclcpp_action::ResultCode::ABORTED:
-            RCLCPP_ERROR(_node->get_logger(), "Gripper homing was aborted");
-            break;
-        case rclcpp_action::ResultCode::CANCELED:
-            RCLCPP_ERROR(_node->get_logger(), "Gripper homing was canceled");
-            break;
-        default:
-            RCLCPP_ERROR(_node->get_logger(), "Unknown result code");
-            break;
-        }
-        if (this->_gripper_succeeded != true){
-            rclcpp::shutdown();
-        }
-    };
-    this->_gripper_homing_client_ptr_->async_send_goal(goal_msg, send_goal_options);
-    rclcpp::sleep_for(std::chrono::seconds(12));
+    case rclcpp_action::ResultCode::SUCCEEDED:
+        RCLCPP_INFO(_node->get_logger(), "Gripper homing succeeded");
+        this->_gripper_succeeded = true;
+        break;
+    case rclcpp_action::ResultCode::ABORTED:
+        RCLCPP_ERROR(_node->get_logger(), "Gripper homing was aborted");
+        break;
+    case rclcpp_action::ResultCode::CANCELED:
+        RCLCPP_ERROR(_node->get_logger(), "Gripper homing was canceled");
+        break;
+    default:
+        RCLCPP_ERROR(_node->get_logger(), "Unknown result code");
+        break;
+    }
+
+    if (!this->_gripper_succeeded) {
+        rclcpp::shutdown();
+    }
 }
 
 void PandaMove::go_home(const bool tmp_pose)
