@@ -121,7 +121,7 @@ void PandaMove::home_gripper()
         }
     };
     this->_gripper_homing_client_ptr_->async_send_goal(goal_msg, send_goal_options);
-    rclcpp::sleep_for(std::chrono::seconds(10));
+    rclcpp::sleep_for(std::chrono::seconds(12));
 }
 
 void PandaMove::go_home(const bool tmp_pose)
