@@ -93,7 +93,8 @@ int main(int argc, char **argv)
 
     rclcpp::Rate rate(1);
     executor_g->spin_once();
-    panda_move->home_gripper();
+    // panda_move->home_gripper();
+    panda_move->open_gripper();
     while (rclcpp::ok())
     {
         if (plc_contl->conveyor_pick){

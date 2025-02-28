@@ -88,7 +88,7 @@ void PandaMove::home_gripper()
       rclcpp::shutdown();
     }
 
-    this->_gripper_succeeded = false;
+    this->_gripper_homing_succeeded = false;
     auto goal_msg = GripperHomingAction::Goal();
 
     RCLCPP_INFO(_node->get_logger(), "Sending gripper goal - Homing gripper");
@@ -111,7 +111,7 @@ void PandaMove::home_gripper()
     {
     case rclcpp_action::ResultCode::SUCCEEDED:
         RCLCPP_INFO(_node->get_logger(), "Gripper homing succeeded");
-        this->_gripper_succeeded = true;
+        this->_gripper_homing_succeeded = true;
         break;
     case rclcpp_action::ResultCode::ABORTED:
         RCLCPP_ERROR(_node->get_logger(), "Gripper homing was aborted");
@@ -124,7 +124,7 @@ void PandaMove::home_gripper()
         break;
     }
 
-    if (!this->_gripper_succeeded) {
+    if (!this->_gripper_homing_succeeded) {
         rclcpp::shutdown();
     }
 }
@@ -323,15 +323,33 @@ void PandaMove::place_action(geometry_msgs::msg::PoseStamped place, const double
     motionExecution(place, "Post Place Pose", true);
 }
 
-  void PandaMove::open_gripper()
-  {
-    // using namespace std::placeholders;
+//   void PandaMove::open_gripper()
+//   {
+//     // using namespace std::placeholders;
 
+//     if (!this->_gripper_motion_client_ptr_->wait_for_action_server()) {
+//       RCLCPP_ERROR(_node->get_logger(), "Action server for gripper motion not available after waiting");
+//       rclcpp::shutdown();
+//     }
+
+//     auto goal_msg = GripperCommandAction::Goal();
+//     goal_msg.command.position = 0.04;
+//     goal_msg.command.max_effort = 10;
+
+//     RCLCPP_INFO(_node->get_logger(), "Sending gripper goal - Opening gripper");
+
+//     auto send_goal_options = rclcpp_action::Client<GripperCommandAction>::SendGoalOptions();
+//     this->_gripper_motion_client_ptr_->async_send_goal(goal_msg, send_goal_options);
+//   }
+
+void PandaMove::open_gripper()
+{
     if (!this->_gripper_motion_client_ptr_->wait_for_action_server()) {
-      RCLCPP_ERROR(_node->get_logger(), "Action server for gripper motion not available after waiting");
+      RCLCPP_ERROR(_node->get_logger(), "Action server for gripper open not available after waiting");
       rclcpp::shutdown();
     }
 
+    this->_gripper_open_succeeded = false;
     auto goal_msg = GripperCommandAction::Goal();
     goal_msg.command.position = 0.04;
     goal_msg.command.max_effort = 10;
@@ -339,18 +357,64 @@ void PandaMove::place_action(geometry_msgs::msg::PoseStamped place, const double
     RCLCPP_INFO(_node->get_logger(), "Sending gripper goal - Opening gripper");
 
     auto send_goal_options = rclcpp_action::Client<GripperCommandAction>::SendGoalOptions();
-    this->_gripper_motion_client_ptr_->async_send_goal(goal_msg, send_goal_options);
-  }
+    auto goal_handle_future = this->_gripper_motion_client_ptr_->async_send_goal(goal_msg, send_goal_options);
 
-  void PandaMove::close_gripper()
-  {
-    // using namespace std::placeholders;
+    // Wait for the goal to be accepted
+    auto goal_handle = goal_handle_future.get();
+    if (!goal_handle) {
+        RCLCPP_ERROR(_node->get_logger(), "Goal was rejected by the action server");
+        return;
+    }
 
+    // Wait for the result
+    auto result_future = this->_gripper_motion_client_ptr_->async_get_result(goal_handle);
+    auto result = result_future.get();
+
+    switch (result.code)
+    {
+    case rclcpp_action::ResultCode::SUCCEEDED:
+        RCLCPP_INFO(_node->get_logger(), "Gripper open succeeded");
+        this->_gripper_open_succeeded = true;
+        break;
+    case rclcpp_action::ResultCode::ABORTED:
+        RCLCPP_ERROR(_node->get_logger(), "Gripper open was aborted");
+        break;
+    case rclcpp_action::ResultCode::CANCELED:
+        RCLCPP_ERROR(_node->get_logger(), "Gripper open was canceled");
+        break;
+    default:
+        RCLCPP_ERROR(_node->get_logger(), "Unknown result code");
+        break;
+    }
+}
+
+//   void PandaMove::close_gripper()
+//   {
+//     // using namespace std::placeholders;
+
+//     if (!this->_gripper_motion_client_ptr_->wait_for_action_server()) {
+//       RCLCPP_ERROR(_node->get_logger(), "Action server for gripper motion not available after waiting");
+//       rclcpp::shutdown();
+//     }
+
+//     auto goal_msg = GripperCommandAction::Goal();
+//     goal_msg.command.position = 0.0;
+//     goal_msg.command.max_effort = 10;
+
+//     RCLCPP_INFO(_node->get_logger(), "Sending gripper goal - Closing gripper");
+
+//     auto send_goal_options = rclcpp_action::Client<GripperCommandAction>::SendGoalOptions();
+//     this->_gripper_motion_client_ptr_->async_send_goal(goal_msg, send_goal_options);
+//   }
+
+void PandaMove::close_gripper()
+{
     if (!this->_gripper_motion_client_ptr_->wait_for_action_server()) {
-      RCLCPP_ERROR(_node->get_logger(), "Action server for gripper motion not available after waiting");
+      RCLCPP_ERROR(_node->get_logger(), "Action server for gripper close not available after waiting");
       rclcpp::shutdown();
     }
 
+    this->_gripper_close_succeeded = false;
     auto goal_msg = GripperCommandAction::Goal();
     goal_msg.command.position = 0.0;
     goal_msg.command.max_effort = 10;
@@ -358,8 +422,36 @@ void PandaMove::place_action(geometry_msgs::msg::PoseStamped place, const double
     RCLCPP_INFO(_node->get_logger(), "Sending gripper goal - Closing gripper");
 
     auto send_goal_options = rclcpp_action::Client<GripperCommandAction>::SendGoalOptions();
-    this->_gripper_motion_client_ptr_->async_send_goal(goal_msg, send_goal_options);
-  }
+    auto goal_handle_future = this->_gripper_motion_client_ptr_->async_send_goal(goal_msg, send_goal_options);
+
+    // Wait for the goal to be accepted
+    auto goal_handle = goal_handle_future.get();
+    if (!goal_handle) {
+        RCLCPP_ERROR(_node->get_logger(), "Goal was rejected by the action server");
+        return;
+    }
+
+    // Wait for the result
+    auto result_future = this->_gripper_motion_client_ptr_->async_get_result(goal_handle);
+    auto result = result_future.get();
+
+    switch (result.code)
+    {
+    case rclcpp_action::ResultCode::SUCCEEDED:
+        RCLCPP_INFO(_node->get_logger(), "Gripper close succeeded");
+        this->_gripper_close_succeeded = true;
+        break;
+    case rclcpp_action::ResultCode::ABORTED:
+        RCLCPP_ERROR(_node->get_logger(), "Gripper close was aborted");
+        break;
+    case rclcpp_action::ResultCode::CANCELED:
+        RCLCPP_ERROR(_node->get_logger(), "Gripper close was canceled");
+        break;
+    default:
+        RCLCPP_ERROR(_node->get_logger(), "Unknown result code");
+        break;
+    }
+}
 
 } // namespace iwtros2
 
