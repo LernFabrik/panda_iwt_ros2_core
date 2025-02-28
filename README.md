@@ -12,6 +12,7 @@ This is the core package for controlling the Franka Emika Panda robot. This pack
 
     Start the connection with the robot using:
     ```
+    xhost +local:root
     docker start panda_container_3
     docker exec -it panda_container_3 /bin/bash
     ros2 launch franka_moveit_config moveit.launch.py robot_ip:=172.16.0.2 load_gripper:=true use_fake_hardware:=false
@@ -42,7 +43,47 @@ This is the core package for controlling the Franka Emika Panda robot. This pack
 - The table where the placement is being added should be free when the program starts since the robot would initially not be aware of the occupied slots
 - The conveyor system does not start the pneumatic pump (for the brakes) when the system is started, until the robot is homed. Please keep the area from the EOL to the robot free of object initially
 - Dock the EOL cell into the conveyor system to start its functionality
+- To modify the scripts in the container, it is best to use VS Code and attach to the running container (through the docker extension) 
 
+
+## Direct Robot Control
+- The robot could be directly commanded independent from the PLC. For that, please execute the code blocks until the PLC controller node mentioned above. The robot can then be commanded to execute the different functionalities by:
+```
+ros2 topic pub --once panda_control panda_iwt_ros2_interfaces/msg/PandaControl "{move_home: true, conveyor_pick: false, hochregallager_pick: false, table_pick: false, slot_id: 0}"
+```
+The above fields could be activated (only one at a time) or modified to perform the desired maneuver.
+ 
+Other commands for controlling the gripper can also be used:
+```
+ros2 action  send_goal /panda_gripper/homing franka_msgs/action/Homing "{}"
+ros2 action send_goal /panda_gripper/gripper_action control_msgs/action/GripperCommand "{command: {position: 0.04, max_effort: 10.0}}"
+```
+Note that the position range of the gripper is between 0.0 and 0.04. The max_effort field is ignored.
+
+- The robot can also be directly commanded via rViz by activating the *MotionPlanning* plugin and moving the robot, then *plan & execute*. However, commanding the robot this way is limited to simple motion commands.
+
+
+## Teaching new poses
+1. Switch to manual mode (by pressing the execution button (black)) and move the robot to the desired pose
+2. Switch to automatic mode (release the execution button)
+3. Activate FCI from the top right window of the panda app on the tablet
+4. Open a terminal and execute the following to connect to the robot:
+    ```
+    docker start panda_container_3
+    docker exec -it panda_container_3 /bin/bash
+    ros2 launch franka_moveit_config moveit.launch.py robot_ip:=172.16.0.2 load_gripper:=true use_fake_hardware:=false
+    ```
+5. Get the current position readings of the robot:
+    ```
+    ros2 run tf2_ros tf2_echo world panda_hand
+    ```
+6. Copy the values to the repective location (for example: "hochregallager_pose", "table_pose_0_pick", "conveyor_pose", etc) in the *main.cpp* file of the *panda_iwt_ros2_core* package 
+
+7. Build the wokspace using
+    ```
+    colcon build --event-handlers desktop_notification+ status- --cmake-args -DCMAKE_BUILD_TYPE=Release
+    ```
+8. Source the changes by executing `source install/setup.bash` in the /franka_ros_ws directory (not the src)
 
 
 ## Reinstallation
@@ -74,7 +115,7 @@ Follow the following steps for reinstalling the container:
 7. (optional) Install [moveit_task_constructor](https://moveit.picknik.ai/humble/doc/examples/moveit_task_constructor/moveit_task_constructor_tutorial.html) from source --> Note: Task constructor is not used in the current setup
 
 
-8. Clone panda_iwt_* pacakges (i.e: [](), [](), []() ) into the franka_ros_ws/src directory
+8. Clone panda_iwt_* pacakges (i.e: [panda_iwt_ros2_core](https://github.com/LernFabrik/panda_iwt_ros2_core), [panda_iwt_ros2_plc_controller](https://github.com/LernFabrik/panda_iwt_ros2_plc_controller), [panda_iwt_ros2_interfaces](https://github.com/LernFabrik/panda_iwt_ros2_interfaces)) into the franka_ros_ws/src directory
 
 9. Build everthing 
     ```
@@ -87,8 +128,17 @@ Follow the following steps for reinstalling the container:
     sudo apt install iproute2 htop nano iputils-ping git-core bash-completion python3-venv python3-pip`
     pip install python-snap7==1.2
     ```
-     
-12. Proceed with the usage steps mentioned above
+
+12. Add the following to the /root/.bashrc file and source it:
+
+    ```
+    source /opt/ros/humble/setup.bash
+    source /root/franka_ros_ws/install/local_setup.bash
+    export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+    export RCUTILS_COLORIZED_OUTPUT=1 # Terminal colorization for RCLCPP loggers
+    ```
+
+13. Proceed with the usage steps mentioned above
 
 
 ## Further Notes (IWT)
