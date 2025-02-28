@@ -127,9 +127,7 @@ class PandaMove
 
     std::shared_ptr<moveit_visual_tools::MoveItVisualTools> _visual_tools;
     Eigen::Isometry3d _text_pose;
-    bool _gripper_homing_succeeded;
-    bool _gripper_open_succeeded;
-    bool _gripper_close_succeeded;
+    bool _gripper_succeeded;
 
     std::string _planner_pipeline, _planner_id, _reference_frame, _ee_frame;
 
